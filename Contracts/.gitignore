@@ -1,0 +1,14 @@
+# Dependency directories
+node_modules/
+build/
+artifacts/
+
+# Environment files
+.env
+
+# Hardhat cache files
+cache/
+coverage/
+
+# Optional MacOS system files
+.DS_Store
