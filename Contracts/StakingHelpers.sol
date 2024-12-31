@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.20;
 
-import "./StakeDefinitions.sol";
+import "./CompDefinitions.sol";
 
 library Rewards {
      function calculateReward(uint256 stakedDuration) internal pure returns (uint256) {
@@ -29,5 +29,19 @@ library StakeUitls {
             }
         }
         revert("DST: Token not found.");
+    }
+}
+
+library TokenSupplyTracker {
+    struct SupplyTracker {
+        uint256 totalSupply;
+    }
+
+    function increment(SupplyTracker storage tracker) internal {
+        tracker.totalSupply++;
+    }
+
+    function get(SupplyTracker storage tracker) internal view returns (uint256) {
+        return tracker.totalSupply;
     }
 }

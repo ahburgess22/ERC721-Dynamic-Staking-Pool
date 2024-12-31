@@ -5,32 +5,47 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./StakingHelpers.sol";
-import "./StakeDefinitions.sol";
+import "./CompDefinitions.sol";
+import "./NFTCreator.sol";
 
 contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
     using StakeDefinitions for StakeDefinitions.Stake;
+    using TokenDefinitions for TokenDefinitions.NFT;
+    using TokenSupplyTracker for TokenSupplyTracker.SupplyTracker;
 
+    event mintedToken(address owner, uint tokenId, string rarity, uint8 level);
     event stakedToken(address owner, uint tokenId);
     event unstakedToken(address owner, uint tokenId, uint rewardId);
 
-    struct Config {
-        uint256 tokenId;
-    }
-    Config public config = Config(1);
-
+    TokenSupplyTracker.SupplyTracker private _supplyTracker;
+    DynamicNFT private _nftCreator; // Instance of the NFTCreator contract
     address public immutable bank = 0x1234567890123456789012345678901234567890;
     mapping (address => StakeDefinitions.Stake[]) public stakes;
     mapping (uint => uint) public tokenStakingStart;
 
-    constructor() ERC721("Dynamic Stake Token", "DST") Ownable(msg.sender) { }
+    constructor(address nftCreatorAddress) ERC721("Dynamic Stake Token", "DST") Ownable(msg.sender) {
+        _nftCreator = DynamicNFT(nftCreatorAddress); // Set NFTCreator contract address during deployment
+    }
 
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) public override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
     function createToken(address to) external {
-        uint next_token = config.tokenId++;
-        _mint(to, next_token);
+
+        // Generate a unique tokenId
+        uint256 tokenId = uint256(keccak256(abi.encodePacked(
+            to,
+            block.timestamp,
+            block.prevrandao,
+            _supplyTracker.get()
+        )));
+
+        _nftCreator.createNFT(tokenId); // Create the NFT and store metadata
+        _mint(to, tokenId); // Mint the token
+        TokenDefinitions.NFT memory metadata = _nftCreator.getToken(tokenId); // Fetch token metadata
+        _supplyTracker.increment(); // Tracking total tokens in system
+        emit mintedToken(to, tokenId, metadata.rarity, metadata.level);
     }
 
     function stake(address account, uint256 tokenId) external {
@@ -57,5 +72,9 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
         uint256 index = StakeUitls.findStakedIndex(stakes[owner], tokenId);
         stakes[owner][index] = stakes[owner][stakes[owner].length-1]; // Moves unstaked token to end of stakes
         stakes[owner].pop(); // Removes unstaked token
+    }
+
+    function getNFTCreatorAddress() external view returns (address) {
+        return address(_nftCreator);
     }
 }

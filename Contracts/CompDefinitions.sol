@@ -8,3 +8,10 @@ library StakeDefinitions {
         uint256 stakingTime;
     }
 }
+
+library TokenDefinitions {
+    struct NFT {
+        string rarity;
+        uint8 level;
+    }
+}
