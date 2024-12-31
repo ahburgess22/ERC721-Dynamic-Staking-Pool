@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./StakingHelpers.sol";
 import "./CompDefinitions.sol";
 import "./NFTCreator.sol";
+import "./RewardToken.sol";
 
 contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
     using StakeDefinitions for StakeDefinitions.Stake;
@@ -17,14 +18,21 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
     event stakedToken(address owner, uint tokenId);
     event unstakedToken(address owner, uint tokenId, uint rewardId);
 
+    struct Account {
+        uint256[] stakedNFTs;
+        uint256 rewardBalance;
+    }
+    mapping(address => Account) public accounts;
     TokenSupplyTracker.SupplyTracker private _supplyTracker;
-    DynamicNFT private _nftCreator; // Instance of the NFTCreator contract
-    address public immutable bank = 0x1234567890123456789012345678901234567890;
-    mapping (address => StakeDefinitions.Stake[]) public stakes;
-    mapping (uint => uint) public tokenStakingStart;
+    DynamicNFT private nftContract; // Instance of the NFTCreator contract
+    RewardToken public rewardToken;
+    address private bank;
+    mapping(address => StakeDefinitions.Stake[]) public stakes;
 
-    constructor(address nftCreatorAddress) ERC721("Dynamic Stake Token", "DST") Ownable(msg.sender) {
-        _nftCreator = DynamicNFT(nftCreatorAddress); // Set NFTCreator contract address during deployment
+    constructor(address _nftCreatorAddress, address _rewardTokenAddress) ERC721("Dynamic Stake Token", "DST") Ownable(msg.sender) {
+        nftContract = DynamicNFT(_nftCreatorAddress); // Set NFTCreator contract address during deployment
+        rewardToken = RewardToken(_rewardTokenAddress);
+        bank = 0x1234567890123456789012345678901234567890;
     }
 
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) public override returns (bytes4) {
@@ -41,9 +49,9 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
             _supplyTracker.get()
         )));
 
-        _nftCreator.createNFT(tokenId); // Create the NFT and store metadata
+        nftContract.createNFT(tokenId); // Create the NFT and store metadata
         _mint(to, tokenId); // Mint the token
-        TokenDefinitions.NFT memory metadata = _nftCreator.getToken(tokenId); // Fetch token metadata
+        TokenDefinitions.NFT memory metadata = nftContract.getToken(tokenId); // Fetch token metadata
         _supplyTracker.increment(); // Tracking total tokens in system
         emit mintedToken(to, tokenId, metadata.rarity, metadata.level);
     }
@@ -52,18 +60,20 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
         require(ownerOf(tokenId) == account, "DST: You must own the token to stake it.");
 
         _transfer(account, bank, tokenId);
-        stakes[account].push(StakeDefinitions.Stake(tokenId, block.timestamp));
-        tokenStakingStart[tokenId] = block.timestamp;
+        TokenDefinitions.NFT memory metadata = nftContract.getToken(tokenId);
+        stakes[account].push(StakeDefinitions.Stake(tokenId, block.timestamp, metadata.rarity, metadata.level));
         emit stakedToken(account, tokenId);
     }
 
     function unstake(address account, uint256 tokenId) external {
         require(StakeUitls.isStakedByUser(stakes[account], tokenId), "DST: Token not staked by user.");
 
-        uint256 stakedDuration = block.timestamp - tokenStakingStart[tokenId];
+        uint256 stakedDuration = block.timestamp;
         uint256 reward = Rewards.calculateReward(stakedDuration);
         _transfer(bank, account, tokenId);
-        _mint(account, reward);
+
+        accounts[account].rewardBalance += reward;
+        rewardToken.mint(account, reward);
         removeStakedToken(account, tokenId);
         emit unstakedToken(account, tokenId, reward);
     }
@@ -75,6 +85,6 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
     }
 
     function getNFTCreatorAddress() external view returns (address) {
-        return address(_nftCreator);
+        return address(nftContract);
     }
 }

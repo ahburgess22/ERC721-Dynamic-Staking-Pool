@@ -6,6 +6,8 @@ library StakeDefinitions {
     struct Stake {
         uint256 tokenId;
         uint256 stakingTime;
+        string rarity;
+        uint8 level;
     }
 }
 
