@@ -19,13 +19,13 @@ describe("MasterRegistry", function () {
     });
 
     it("Should register a new pool", async function () {
-        await registry.registerPool(pool.address);
+        await registry.registerPool(pool.address, "Test");
         const registered = await registry.registeredPools(pool.address);
         expect(registered.owner).to.equal(owner.address);
     });
 
     it("Should update stakes for a pool", async function () {
-        await registry.registerPool(pool.address);
+        await registry.registerPool(pool.address, "Test");
         await registry.updateStakes(pool.address, 100);
         const registered = await registry.registeredPools(pool.address);
         expect(registered.totalStakes).to.equal(100);
@@ -35,5 +35,15 @@ describe("MasterRegistry", function () {
         await expect(
             registry.updateStakes(pool.address, 100)
         ).to.be.revertedWith("Master Registry: Pool not registered.");
+    });
+
+    it("Should register and retrieve pool data", async function () {
+        // Register a pool
+        await registry.registerPool(pool.address, "Test");
+
+        // Retrieve pool data
+        const poolData = await registry.getPoolData(pool.address);
+        expect(poolData.name).to.equal("Test");
+        expect(poolData.totalStakes).to.equal(0);
     });
 });

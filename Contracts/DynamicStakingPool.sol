@@ -30,13 +30,14 @@ contract DynamicStakingPool is ERC721 {
     MasterRegistry public registry;
     uint256 public totalStakes;
     address private bank;
+    string poolName;
     mapping(address => StakeDefinitions.Stake[]) public stakes;
 
     constructor(address _nftCreatorAddress, address _rewardTokenAddress, address _registryAddress, address _bankAddress) ERC721("Dynamic Stake Token", "DST") {
         nftContract = NFT(_nftCreatorAddress); // Set NFTCreator contract address during deployment
         rewardToken = RewardToken(_rewardTokenAddress);
         registry = MasterRegistry(_registryAddress);
-        registry.registerPool(address(this));
+        registry.registerPool(address(this), poolName);
         bank = _bankAddress;
     }
 

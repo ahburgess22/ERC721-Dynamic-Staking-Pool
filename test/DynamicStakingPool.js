@@ -41,7 +41,7 @@ describe("DynamicStakingPool", function () {
     });
 
     it("Should register itself in the MasterRegistry upon deployment", async function () {
-        await registry.registerPool(stakingPool.runner.address);
+        await registry.registerPool(stakingPool.runner.address, "Test");
         const registered = await registry.registeredPools(stakingPool.runner.address);
         expect(registered.owner).to.equal(owner.address);
     });
