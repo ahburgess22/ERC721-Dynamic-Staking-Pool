@@ -8,8 +8,9 @@ import "./StakingHelpers.sol";
 import "./CompDefinitions.sol";
 import "./NFTCreator.sol";
 import "./RewardToken.sol";
+import "./MasterRegistry.sol";
 
-contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
+contract DynamicStakingPool is ERC721, Ownable {
     using StakeDefinitions for StakeDefinitions.Stake;
     using TokenDefinitions for TokenDefinitions.NFT;
     using TokenSupplyTracker for TokenSupplyTracker.SupplyTracker;
@@ -26,18 +27,22 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
     TokenSupplyTracker.SupplyTracker private _supplyTracker;
     NFT private nftContract; // Instance of the NFTCreator contract
     RewardToken public rewardToken;
+    MasterRegistry registry;
+    uint256 public totalStakes;
     address private bank;
     mapping(address => StakeDefinitions.Stake[]) public stakes;
 
-    constructor(address _nftCreatorAddress, address _rewardTokenAddress) ERC721("Dynamic Stake Token", "DST") Ownable(msg.sender) {
+    constructor(address _nftCreatorAddress, address _rewardTokenAddress, address registryAddress) ERC721("Dynamic Stake Token", "DST") Ownable(msg.sender) {
         nftContract = NFT(_nftCreatorAddress); // Set NFTCreator contract address during deployment
         rewardToken = RewardToken(_rewardTokenAddress);
+        registry = MasterRegistry(registryAddress);
+        registry.registerPool(address(this));
         bank = 0x1234567890123456789012345678901234567890;
     }
 
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) public override returns (bytes4) {
-        return this.onERC721Received.selector;
-    }
+    // function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) public override returns (bytes4) {
+    //     return this.onERC721Received.selector;
+    // }
 
     function createToken(address to) external {
 
@@ -62,6 +67,8 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
         _transfer(account, bank, tokenId);
         TokenDefinitions.NFT memory metadata = nftContract.getToken(tokenId);
         stakes[account].push(StakeDefinitions.Stake(tokenId, block.timestamp, metadata.rarity, metadata.level));
+        totalStakes += 1;
+        registry.updateStakes(address(this), totalStakes);
         emit stakedToken(account, tokenId);
     }
 
@@ -77,6 +84,8 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
         accounts[account].rewardBalance += reward;
         rewardToken.mint(account, reward);
         removeStakedToken(account, tokenId);
+        totalStakes -= 1;
+        registry.updateStakes(address(this), totalStakes);
         emit unstakedToken(account, tokenId, reward);
     }
 
