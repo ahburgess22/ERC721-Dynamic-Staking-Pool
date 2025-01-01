@@ -15,9 +15,6 @@ describe("MasterRegistry", function () {
     });
 
     it("Should deploy successfully", async function () {
-    
-        console.log("Deployment object:", registry.runner.address);
-    
         expect(registry.runner.address).to.not.be.undefined;
     });
 

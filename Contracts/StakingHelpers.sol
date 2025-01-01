@@ -7,7 +7,7 @@ import "./CompDefinitions.sol";
 library Rewards {
      function calculateReward(uint256 stakedDuration) internal pure returns (uint256) {
         // Customize
-        uint256 reward = stakedDuration / 10;
+        uint256 reward = stakedDuration / 60;
         return reward > 10 ? 10 : reward; // Example: +1 value per minute staked capped at 10
     }
 
