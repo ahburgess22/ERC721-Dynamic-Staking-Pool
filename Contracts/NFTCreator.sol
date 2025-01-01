@@ -4,8 +4,10 @@ pragma solidity ^0.8.20;
 
 import "./CompDefinitions.sol";
 
-contract DynamicNFT {
+contract NFT {
     using TokenDefinitions for TokenDefinitions.NFT;
+
+    event LegendaryPull(string message);
 
     mapping (uint256 => TokenDefinitions.NFT) private tokens;
 
@@ -19,8 +21,11 @@ contract DynamicNFT {
         });
     }
 
-    function determineRarity(uint256 tokenId) internal pure returns (string memory) {
-        if (tokenId % 100 < 10) return "Legendary";
+    function determineRarity(uint256 tokenId) internal returns (string memory) {
+        if (tokenId % 100 < 10) {
+            emit LegendaryPull("LEGENDARY NFT PULL!");
+            return "Legendary";
+        }
         else if (tokenId % 100 < 40) return "Rare";
         return "Common";
     }

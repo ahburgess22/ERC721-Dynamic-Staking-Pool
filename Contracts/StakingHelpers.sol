@@ -7,8 +7,27 @@ import "./CompDefinitions.sol";
 library Rewards {
      function calculateReward(uint256 stakedDuration) internal pure returns (uint256) {
         // Customize
-        uint256 reward = stakedDuration / 5;
+        uint256 reward = stakedDuration / 10;
         return reward > 10 ? 10 : reward; // Example: +1 value per minute staked capped at 10
+    }
+
+    function levelCoefficient(uint256 level) internal pure returns (uint256) {
+        level = 100 - level;
+        return (1 + (level / 10)); // 10% increase per level
+    }
+
+    function rarityCoefficient(string memory rarity) internal pure returns (uint256) {
+        if (compareStrings(rarity, "Legendary")) {
+            return 3;
+        } else if (compareStrings(rarity, "Rare")) {
+            return 2;
+        } else {
+            return 1;
+        }
+    }
+
+    function compareStrings(string memory tokenRarity, string memory rarity) internal pure returns (bool) {
+        return keccak256(abi.encodePacked(tokenRarity)) == keccak256(abi.encodePacked(rarity));
     }
 }
 

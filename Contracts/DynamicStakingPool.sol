@@ -16,7 +16,7 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
 
     event mintedToken(address owner, uint tokenId, string rarity, uint8 level);
     event stakedToken(address owner, uint tokenId);
-    event unstakedToken(address owner, uint tokenId, uint rewardId);
+    event unstakedToken(address owner, uint tokenId, uint reward);
 
     struct Account {
         uint256[] stakedNFTs;
@@ -24,13 +24,13 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
     }
     mapping(address => Account) public accounts;
     TokenSupplyTracker.SupplyTracker private _supplyTracker;
-    DynamicNFT private nftContract; // Instance of the NFTCreator contract
+    NFT private nftContract; // Instance of the NFTCreator contract
     RewardToken public rewardToken;
     address private bank;
     mapping(address => StakeDefinitions.Stake[]) public stakes;
 
     constructor(address _nftCreatorAddress, address _rewardTokenAddress) ERC721("Dynamic Stake Token", "DST") Ownable(msg.sender) {
-        nftContract = DynamicNFT(_nftCreatorAddress); // Set NFTCreator contract address during deployment
+        nftContract = NFT(_nftCreatorAddress); // Set NFTCreator contract address during deployment
         rewardToken = RewardToken(_rewardTokenAddress);
         bank = 0x1234567890123456789012345678901234567890;
     }
@@ -70,6 +70,8 @@ contract DynamicStakingPool is ERC721, Ownable, IERC721Receiver {
 
         uint256 stakedDuration = block.timestamp;
         uint256 reward = Rewards.calculateReward(stakedDuration);
+        reward *= Rewards.levelCoefficient(nftContract.getToken(tokenId).level);
+        reward *= Rewards.rarityCoefficient(nftContract.getToken(tokenId).rarity);
         _transfer(bank, account, tokenId);
 
         accounts[account].rewardBalance += reward;
