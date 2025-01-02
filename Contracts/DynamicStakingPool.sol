@@ -78,7 +78,14 @@ contract DynamicStakingPool is ERC721 {
         TokenDefinitions.NFT memory metadata = nftContract.getToken(tokenId);
         stakes[msg.sender].push(StakeDefinitions.Stake(tokenId, block.timestamp, metadata.rarity, metadata.level));
         totalStakes += 1;
-        registry.updateStakes(address(this), 1, true);
+
+        if (metadata.level < 10) {
+            registry.updateStakes(address(this), 1, true, false, true); // Tells registry this token is legendary
+        } else if (metadata.level < 40) {
+            registry.updateStakes(address(this), 1, true, true, false); // Rare
+        } else {
+            registry.updateStakes(address(this), 1, true, false, false); // Common
+        }
         emit stakedToken(msg.sender, tokenId);
     }
 
@@ -95,7 +102,7 @@ contract DynamicStakingPool is ERC721 {
         rewardToken.mint(msg.sender, reward);
         removeStakedToken(msg.sender, tokenId);
         totalStakes -= 1;
-        registry.updateStakes(address(this), 1, false);
+        registry.updateStakes(address(this), 1, false, false, false);
         emit unstakedToken(msg.sender, tokenId, reward);
     }
 

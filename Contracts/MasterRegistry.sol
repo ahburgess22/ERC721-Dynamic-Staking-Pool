@@ -10,6 +10,10 @@ contract MasterRegistry {
         string name;
         uint256 totalStakes;
         uint256 createdAt;
+        uint256 rareNFTs;
+        uint256 legendaryNFTs;
+        uint256 stakingPower;
+        uint256 weight;
     }
 
     mapping(address => PoolData) public registeredPools;
@@ -17,23 +21,25 @@ contract MasterRegistry {
     uint256 public globalPools;
     uint public rewardRate;
     uint public baseReward = BaseReward.updateBaseReward();
+    uint public globalStakingPower = 0;
 
     // Events
-    event PoolRegistered(uint256 globalPools, address indexed pool, address indexed owner, string indexed name);
+    event PoolRegistered(uint256 globalPools, address indexed pool, address indexed owner, string name);
     event GlobalStakesUpdated(uint256 globalStakes, address indexed pool);
-    event PoolStakesUpdated(string indexed poolName, uint256 stakes);
+    event PoolStakesUpdated(string poolName, uint256 stakes);
     event RewardRateUpdated(uint256 rewardRate, uint256 globalPools, uint256 globalStakes);
+    event PoolStakingPowerUpdated(string poolName, uint256 poolStakingPower, uint256 globalStakingPower);
 
     function registerPool(address poolAddress, string memory name) external {
         require(poolAddress != address(0) && registeredPools[poolAddress].owner == address(0), "Master Registry: Invalid pool address or already registered.");
         
-        registeredPools[poolAddress] = PoolData(msg.sender, name, 0, block.timestamp);
+        registeredPools[poolAddress] = PoolData(msg.sender, name, 0, block.timestamp, 0, 0, 0, 0);
         globalPools++;
         updateRewardRate(baseReward, globalPools, globalStakes);
         emit PoolRegistered(globalPools, poolAddress, msg.sender, name);
     }
 
-    function updateStakes(address poolAddress, uint256 stakesDelta, bool isAdding) external {
+    function updateStakes(address poolAddress, uint256 stakesDelta, bool isAdding, bool isRare, bool isLegendary) external {
         require(registeredPools[poolAddress].owner != address(0), "Master Registry: Pool not registered.");
 
         if (isAdding) {
@@ -46,6 +52,17 @@ contract MasterRegistry {
             globalStakes -= stakesDelta;
         }
 
+        if (isRare) {
+            registeredPools[poolAddress].rareNFTs++;
+        } else if (isLegendary) {
+            registeredPools[poolAddress].legendaryNFTs++;
+        }
+
+        uint256 newStakingPower = PoolWeight.updatePoolStakingPower(registeredPools[poolAddress].rareNFTs, registeredPools[poolAddress].legendaryNFTs, registeredPools[poolAddress].totalStakes);
+        globalStakingPower += newStakingPower - registeredPools[poolAddress].stakingPower;
+        registeredPools[poolAddress].stakingPower = newStakingPower;
+        emit PoolStakingPowerUpdated(registeredPools[poolAddress].name, registeredPools[poolAddress].stakingPower, globalStakingPower);
+       
         updateRewardRate(baseReward, globalPools, globalStakes);
         emit PoolStakesUpdated(registeredPools[poolAddress].name, registeredPools[poolAddress].totalStakes);
         emit GlobalStakesUpdated(globalStakes, poolAddress);
@@ -65,4 +82,6 @@ contract MasterRegistry {
     function getBaseReward() public view returns(uint256) {
         return baseReward;
     }
+
+
 }
