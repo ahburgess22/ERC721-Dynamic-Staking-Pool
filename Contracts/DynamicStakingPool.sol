@@ -29,16 +29,13 @@ contract DynamicStakingPool is ERC721 {
     RewardToken public rewardToken;
     MasterRegistry public registry;
     uint256 public totalStakes;
-    address private bank;
-    string poolName;
     mapping(address => StakeDefinitions.Stake[]) public stakes;
 
-    constructor(address _nftCreatorAddress, address _rewardTokenAddress, address _registryAddress, address _bankAddress) ERC721("Dynamic Stake Token", "DST") {
+    constructor(address _nftCreatorAddress, address _rewardTokenAddress, address _registryAddress, string memory poolName) ERC721("Dynamic Stake Token", "DST") {
         nftContract = NFT(_nftCreatorAddress); // Set NFTCreator contract address during deployment
         rewardToken = RewardToken(_rewardTokenAddress);
         registry = MasterRegistry(_registryAddress);
         registry.registerPool(address(this), poolName);
-        bank = _bankAddress;
     }
 
     // function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) public override returns (bytes4) {
@@ -65,11 +62,11 @@ contract DynamicStakingPool is ERC721 {
     function stake(uint256 tokenId) external {
         require(ownerOf(tokenId) == msg.sender, "DST: You must own the token to stake it.");
 
-        _transfer(msg.sender, bank, tokenId);
+        _transfer(msg.sender, address(registry), tokenId);
         TokenDefinitions.NFT memory metadata = nftContract.getToken(tokenId);
         stakes[msg.sender].push(StakeDefinitions.Stake(tokenId, block.timestamp, metadata.rarity, metadata.level));
         totalStakes += 1;
-        registry.updateStakes(address(this), totalStakes);
+        registry.updateStakes(address(this), 1, true);
         emit stakedToken(msg.sender, tokenId);
     }
 
@@ -80,13 +77,13 @@ contract DynamicStakingPool is ERC721 {
         uint256 reward = Rewards.calculateReward(stakedDuration);
         reward *= Rewards.levelCoefficient(nftContract.getToken(tokenId).level);
         reward *= Rewards.rarityCoefficient(nftContract.getToken(tokenId).rarity);
-        _transfer(bank, msg.sender, tokenId);
+        _transfer(address(registry), msg.sender, tokenId);
 
         accounts[msg.sender].rewardBalance += reward;
         rewardToken.mint(msg.sender, reward);
         removeStakedToken(msg.sender, tokenId);
         totalStakes -= 1;
-        registry.updateStakes(address(this), totalStakes);
+        registry.updateStakes(address(this), 1, false);
         emit unstakedToken(msg.sender, tokenId, reward);
     }
 

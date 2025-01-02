@@ -4,14 +4,15 @@ const { ethers } = require("hardhat");
 describe("DynamicStakingPool", function () {
     let MasterRegistry, DynamicStakingPool;
     let registry, stakingPool, rewardToken, nftContract;
-    let owner, user1, user2, bank, snapshotId;
+    let owner, user1, user2, snapshotId;
+    const poolName = "Test";
     const MAX_SUPPLY = ethers.parseEther("1000000");
 
     beforeEach(async function () {
         snapshotId = await ethers.provider.send("evm_snapshot", []);
 
         // Get the contract factories and signers
-        [owner, user1, user2, bank] = await ethers.getSigners();
+        [owner, user1, user2] = await ethers.getSigners();
     
         MasterRegistry = await ethers.getContractFactory("MasterRegistry");
         const RewardToken = await ethers.getContractFactory("RewardToken");
@@ -32,7 +33,7 @@ describe("DynamicStakingPool", function () {
             nftContract.target,
             rewardToken.target,
             registry.target,
-            bank.address
+            poolName
         );     
     });
     
@@ -41,7 +42,8 @@ describe("DynamicStakingPool", function () {
     });
 
     it("Should register itself in the MasterRegistry upon deployment", async function () {
-        await registry.registerPool(stakingPool.runner.address, "Test");
+        const name = poolName
+        await registry.registerPool(stakingPool.runner.address, name);
         const registered = await registry.registeredPools(stakingPool.runner.address);
         expect(registered.owner).to.equal(owner.address);
     });

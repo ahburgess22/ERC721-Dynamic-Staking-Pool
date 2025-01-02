@@ -26,14 +26,17 @@ describe("MasterRegistry", function () {
 
     it("Should update stakes for a pool", async function () {
         await registry.registerPool(pool.address, "Test");
-        await registry.updateStakes(pool.address, 100);
-        const registered = await registry.registeredPools(pool.address);
-        expect(registered.totalStakes).to.equal(100);
+        await registry.updateStakes(pool.address, 100, true);
+        const registered1 = await registry.registeredPools(pool.address);
+        expect(registered1.totalStakes).to.equal(100);
+        await registry.updateStakes(pool.address, 100, false);
+        const registered2 = await registry.registeredPools(pool.address);
+        expect(registered2.totalStakes).to.equal(0);
     });
 
     it("Should prevent updating stakes for unregistered pools", async function () {
         await expect(
-            registry.updateStakes(pool.address, 100)
+            registry.updateStakes(pool.address, 100, true)
         ).to.be.revertedWith("Master Registry: Pool not registered.");
     });
 
