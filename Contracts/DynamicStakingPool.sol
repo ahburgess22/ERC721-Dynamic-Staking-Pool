@@ -11,10 +11,13 @@ import "./RewardToken.sol";
 import "./MasterRegistry.sol";
 
 contract DynamicStakingPool is ERC721 {
+
+    // Libraries
     using StakeDefinitions for StakeDefinitions.Stake;
     using TokenDefinitions for TokenDefinitions.NFT;
     using TokenSupplyTracker for TokenSupplyTracker.SupplyTracker;
 
+    // Events
     event mintedToken(address owner, uint tokenId, string rarity, uint8 level);
     event stakedToken(address owner, uint tokenId);
     event unstakedToken(address owner, uint tokenId, uint reward);
@@ -23,14 +26,23 @@ contract DynamicStakingPool is ERC721 {
         uint256[] stakedNFTs;
         uint256 rewardBalance;
     }
-    mapping(address => Account) public accounts;
-    TokenSupplyTracker.SupplyTracker private _supplyTracker;
-    NFT private nftContract; // Instance of the NFTCreator contract
-    RewardToken public rewardToken;
-    MasterRegistry public registry;
-    uint256 public totalStakes;
-    mapping(address => StakeDefinitions.Stake[]) public stakes;
 
+    /* Variables */
+
+    // Core Contracts
+    NFT private nftContract; // Instance of the NFT contract
+    RewardToken public rewardToken; // Instance of the RewardToken contract
+    MasterRegistry public registry; // Instance of the MasterRegistry contract
+
+    // Staking Data
+    uint256 public totalStakes; // Total stakes for a given pool
+    mapping(address => Account) public accounts; // User accounts (NFTs staked and reward balances)
+    mapping(address => StakeDefinitions.Stake[]) public stakes; // User stakes
+
+    // Utility
+    TokenSupplyTracker.SupplyTracker private _supplyTracker; // Tracks supply-related data
+
+    // Constructor
     constructor(address _nftCreatorAddress, address _rewardTokenAddress, address _registryAddress, string memory poolName) ERC721("Dynamic Stake Token", "DST") {
         nftContract = NFT(_nftCreatorAddress); // Set NFTCreator contract address during deployment
         rewardToken = RewardToken(_rewardTokenAddress);

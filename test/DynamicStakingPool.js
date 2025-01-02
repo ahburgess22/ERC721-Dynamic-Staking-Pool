@@ -105,6 +105,21 @@ describe("DynamicStakingPool", function () {
         await expect(stakingPool.connect(user2).unstake(tokenId)).to.be.revertedWith("DST: Token not staked by user.");
     });
 
+    it("Should prevent double-staking the same token", async function () {
+        // Mint a NFT for user1
+        const tx = await stakingPool.connect(user1).createToken();
+        const receipt = await tx.wait();
+
+        // Parse the logs to find the mintedToken event
+        const tokenId = receipt.logs[1].args[1];
+
+        // Stake the NFT with a user
+        await stakingPool.connect(user1).stake(tokenId);
+
+        // Try to stake the same NFT again
+        await expect(stakingPool.connect(user1).stake(tokenId)).to.be.revertedWith("DST: You must own the token to stake it.");
+    });
+
     it("Should handle multiple users staking and unstaking", async function () {
         // Mint NFTs for user1 and user2
         const tx = await stakingPool.connect(user1).createToken();
