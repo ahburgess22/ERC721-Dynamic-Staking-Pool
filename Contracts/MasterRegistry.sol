@@ -97,6 +97,8 @@ contract MasterRegistry {
             total += registeredPools[poolAddresses[i]].stakingPower; // Larger poolStakingPower has better chance of reaching winningNum
             if (total > winningNum) {
                 emit WinnerSelected(registeredPools[poolAddresses[i]].name, registeredPools[poolAddresses[i]].stakingPower, globalStakingPower);
+                baseReward = BaseReward.updateBaseReward(); // New base reward simulates reward for validating the upcoming block
+                updateRewardRate(baseReward, globalPools, globalStakes); // Calculate new reward rate based on new baseReward
                 return registeredPools[poolAddresses[i]].name;
             }
         }
