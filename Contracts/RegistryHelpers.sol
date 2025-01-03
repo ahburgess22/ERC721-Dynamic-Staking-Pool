@@ -24,3 +24,9 @@ library PoolWeight {
         return tokens;
     }
 }
+
+library Validator {
+    function _getWinner(uint256 globalStakingPower) internal view returns(uint256) {
+        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, address(this)))) % globalStakingPower;
+    }
+}

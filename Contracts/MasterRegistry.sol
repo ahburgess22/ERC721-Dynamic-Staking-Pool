@@ -13,10 +13,10 @@ contract MasterRegistry {
         uint256 rareNFTs;
         uint256 legendaryNFTs;
         uint256 stakingPower;
-        uint256 weight;
     }
 
     mapping(address => PoolData) public registeredPools;
+    address[] public poolAddresses; // Tracking address to use later when selecting winning validator
     uint256 public globalStakes;
     uint256 public globalPools;
     uint public rewardRate;
@@ -29,13 +29,15 @@ contract MasterRegistry {
     event PoolStakesUpdated(string poolName, uint256 stakes);
     event RewardRateUpdated(uint256 rewardRate, uint256 globalPools, uint256 globalStakes);
     event PoolStakingPowerUpdated(string poolName, uint256 poolStakingPower, uint256 globalStakingPower);
+    event WinnerSelected(string winningPool, uint256 poolStakingPower, uint256 globalStakingPower);
 
     function registerPool(address poolAddress, string memory name) external {
         require(poolAddress != address(0) && registeredPools[poolAddress].owner == address(0), "Master Registry: Invalid pool address or already registered.");
         
-        registeredPools[poolAddress] = PoolData(msg.sender, name, 0, block.timestamp, 0, 0, 0, 0);
+        registeredPools[poolAddress] = PoolData(msg.sender, name, 0, block.timestamp, 0, 0, 0);
         globalPools++;
         updateRewardRate(baseReward, globalPools, globalStakes);
+        poolAddresses.push(poolAddress);
         emit PoolRegistered(globalPools, poolAddress, msg.sender, name);
     }
 
@@ -52,6 +54,7 @@ contract MasterRegistry {
             globalStakes -= stakesDelta;
         }
 
+        // Checking if NFT is rare or legendary for staking calculations later
         if (isRare) {
             registeredPools[poolAddress].rareNFTs++;
         } else if (isLegendary) {
@@ -59,7 +62,7 @@ contract MasterRegistry {
         }
 
         uint256 newStakingPower = PoolWeight.updatePoolStakingPower(registeredPools[poolAddress].rareNFTs, registeredPools[poolAddress].legendaryNFTs, registeredPools[poolAddress].totalStakes);
-        globalStakingPower += newStakingPower - registeredPools[poolAddress].stakingPower;
+        globalStakingPower += newStakingPower - registeredPools[poolAddress].stakingPower; // Add only new token's value to the global staking power
         registeredPools[poolAddress].stakingPower = newStakingPower;
         emit PoolStakingPowerUpdated(registeredPools[poolAddress].name, registeredPools[poolAddress].stakingPower, globalStakingPower);
        
@@ -81,6 +84,24 @@ contract MasterRegistry {
 
     function getBaseReward() public view returns(uint256) {
         return baseReward;
+    }
+
+    function getWinner() public returns(string memory) {
+        // Check to be sure at least 2 pools have each staked, otherwise prevent abuse of the market
+        require(globalPools > 1 && registeredPools[poolAddresses[0]].stakingPower < globalStakingPower, "Master Registry: No competing pools or stakes.");
+
+        uint total = 0;
+        uint winningNum = Validator._getWinner(globalStakingPower); // Random number generated between 0 and globalStakingPower
+        
+        for(uint i = 0; i < poolAddresses.length; i++) { // Keeps adding to total until poolStakingPowers accumulate to winningNum
+            total += registeredPools[poolAddresses[i]].stakingPower; // Larger poolStakingPower has better chance of reaching winningNum
+            if (total > winningNum) {
+                emit WinnerSelected(registeredPools[poolAddresses[i]].name, registeredPools[poolAddresses[i]].stakingPower, globalStakingPower);
+                return registeredPools[poolAddresses[i]].name;
+            }
+        }
+
+        revert("Master Registry: Error selecting winner.");
     }
 
 
