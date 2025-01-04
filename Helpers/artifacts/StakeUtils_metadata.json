@@ -1,0 +1,53 @@
+{
+	"compiler": {
+		"version": "0.8.26+commit.8a97fa7a"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"Helpers/StakingHelpers.sol": "StakeUtils"
+		},
+		"evmVersion": "cancun",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"Helpers/CompDefinitions.sol": {
+			"keccak256": "0x2e54220c25b289b4b7e9754359ce70fe2e5f00b096cc461552594faae9be4298",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://1ca2a9a9086c6d2fc1923b3482f0fb5c17f659618537b79c1a3cbb62a964231b",
+				"dweb:/ipfs/QmbftZNYgwDK59shNQmiQStaYgD94GCVxBBtJEkaq49Cdh"
+			]
+		},
+		"Helpers/StakingHelpers.sol": {
+			"keccak256": "0xe76cf3ad696d81a71c64e2be88ea892a22163e23a8f63e54b15cbfd8e595ae3a",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://f006432b3491e955c65e418ba6068b99f7d8ce450d587c1cc92a4a965dbfaa4d",
+				"dweb:/ipfs/QmXZtTB6TEYDnDwQMF2KXA6hjxwtgjHsHptpdPdkFbyttr"
+			]
+		}
+	},
+	"version": 1
+}

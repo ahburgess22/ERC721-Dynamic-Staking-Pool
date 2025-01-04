@@ -11,7 +11,7 @@ contract RewardToken is ERC20, ERC20Capped, Ownable {
 
     constructor(uint256 maxSupply)
         ERC20("Reward Token", "RTK")
-        ERC20Capped(maxSupply)
+        ERC20Capped(1e12)
         Ownable(msg.sender)
     { }
 

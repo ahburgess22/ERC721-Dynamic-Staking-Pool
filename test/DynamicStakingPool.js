@@ -60,7 +60,7 @@ describe("DynamicStakingPool", function () {
         await stakingPool.connect(user1).stake(tokenId);
     
         // Validate staking updates
-        const stakes = await stakingPool.getUserStakes(user1.address);
+        const stakes = await stakingPool.connect(user1).getUserStakes();
         expect(stakes.length).to.be.greaterThan(0);
         const registered = await registry.registeredPools(stakingPool.target);
         expect(registered.totalStakes).to.equal(1);

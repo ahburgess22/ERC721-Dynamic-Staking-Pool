@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.20;
 
-import "./CompDefinitions.sol";
+import "../Helpers/CompDefinitions.sol";
 
 contract NFT {
     using TokenDefinitions for TokenDefinitions.NFT;

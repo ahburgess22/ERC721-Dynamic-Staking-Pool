@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./RegistryHelpers.sol";
+import "../Helpers/RegistryHelpers.sol";
 
 contract MasterRegistry {
     struct PoolData {
@@ -22,6 +22,7 @@ contract MasterRegistry {
     uint public rewardRate;
     uint public baseReward = BaseReward.updateBaseReward();
     uint public globalStakingPower = 0;
+    address public lastWinnerAddress;
 
     // Events
     event PoolRegistered(uint256 globalPools, address indexed pool, address indexed owner, string name);
@@ -46,29 +47,72 @@ contract MasterRegistry {
 
         if (isAdding) {
             registeredPools[poolAddress].totalStakes += stakesDelta;
-            globalStakes += uint256(stakesDelta);
+            globalStakes += stakesDelta;
+
+            // Checking if NFT is rare or legendary for staking calculations later
+            if (isRare) {
+                registeredPools[poolAddress].rareNFTs++;
+            } else if (isLegendary) {
+                registeredPools[poolAddress].legendaryNFTs++;
+            }
+
         } else {
-            require(registeredPools[poolAddress].totalStakes >= stakesDelta, "Master Registry: Insufficient stakes to remove.");
+
+            require(
+                registeredPools[poolAddress].totalStakes >= stakesDelta,
+                "Master Registry: Insufficient stakes to remove."
+            );
+
+            require(
+                globalStakes >= stakesDelta,
+                "Master Registry: Insufficient global stakes to remove."
+            );
+
             registeredPools[poolAddress].totalStakes -= stakesDelta;
-            require(globalStakes >= stakesDelta, "Master Registry: Insufficient global stakes to remove.");
             globalStakes -= stakesDelta;
+
+            // Checking if NFT is rare or legendary for staking calculations later
+            if (isRare) {
+                registeredPools[poolAddress].rareNFTs--;
+            } else if (isLegendary) {
+                registeredPools[poolAddress].legendaryNFTs--;
+            }
+
         }
 
-        // Checking if NFT is rare or legendary for staking calculations later
-        if (isRare) {
-            registeredPools[poolAddress].rareNFTs++;
-        } else if (isLegendary) {
-            registeredPools[poolAddress].legendaryNFTs++;
-        }
+        // Get the new staking power of the pool
+        uint256 newStakingPower = PoolWeight.updatePoolStakingPower(
+            registeredPools[poolAddress].rareNFTs,
+            registeredPools[poolAddress].legendaryNFTs,
+            registeredPools[poolAddress].totalStakes
+        );
 
-        uint256 newStakingPower = PoolWeight.updatePoolStakingPower(registeredPools[poolAddress].rareNFTs, registeredPools[poolAddress].legendaryNFTs, registeredPools[poolAddress].totalStakes);
-        globalStakingPower += newStakingPower - registeredPools[poolAddress].stakingPower; // Add only new token's value to the global staking power
+        // Add the difference between new and old staking power to global
+        globalStakingPower =
+            globalStakingPower +
+            newStakingPower -
+            registeredPools[poolAddress].stakingPower;
+        
+        // Update the staking power of the pool and rewardRate
         registeredPools[poolAddress].stakingPower = newStakingPower;
-        emit PoolStakingPowerUpdated(registeredPools[poolAddress].name, registeredPools[poolAddress].stakingPower, globalStakingPower);
-       
-        updateRewardRate(baseReward, globalPools, globalStakes);
-        emit PoolStakesUpdated(registeredPools[poolAddress].name, registeredPools[poolAddress].totalStakes);
-        emit GlobalStakesUpdated(globalStakes, poolAddress);
+        updateRewardRate(baseReward, globalPools, globalStakes); 
+
+        // Emit Events
+        emit PoolStakingPowerUpdated(
+            registeredPools[poolAddress].name,
+            registeredPools[poolAddress].stakingPower,
+            globalStakingPower
+        );
+
+        emit PoolStakesUpdated(
+            registeredPools[poolAddress].name,
+            registeredPools[poolAddress].totalStakes)
+        ;
+
+        emit GlobalStakesUpdated(
+            globalStakes,
+            poolAddress
+        );
     }
 
     function getPoolData(address poolAddress) external view returns (string memory name, uint256 totalStakes, uint256 createdAt) {
@@ -90,20 +134,33 @@ contract MasterRegistry {
         // Check to be sure at least 2 pools have each staked, otherwise prevent abuse of the market
         require(globalPools > 1 && registeredPools[poolAddresses[0]].stakingPower < globalStakingPower, "Master Registry: No competing pools or stakes.");
 
-        uint total = 0;
-        uint winningNum = Validator._getWinner(globalStakingPower); // Random number generated between 0 and globalStakingPower
+        uint attempts = 0; // Safety to prevent infinite loops
+        uint winningNum; // Random number generated between 0 and globalStakingPower
         
-        for(uint i = 0; i < poolAddresses.length; i++) { // Keeps adding to total until poolStakingPowers accumulate to winningNum
-            total += registeredPools[poolAddresses[i]].stakingPower; // Larger poolStakingPower has better chance of reaching winningNum
-            if (total > winningNum) {
-                emit WinnerSelected(registeredPools[poolAddresses[i]].name, registeredPools[poolAddresses[i]].stakingPower, globalStakingPower);
-                baseReward = BaseReward.updateBaseReward(); // New base reward simulates reward for validating the upcoming block
-                updateRewardRate(baseReward, globalPools, globalStakes); // Calculate new reward rate based on new baseReward
-                return registeredPools[poolAddresses[i]].name;
+        while (attempts < globalStakes**2) {
+            winningNum = Validator._getWinner(globalStakingPower);
+            uint total = 0;
+
+            for(uint i = 0; i < poolAddresses.length; i++) { // Keeps adding to total until poolStakingPowers accumulate to winningNum
+                total += registeredPools[poolAddresses[i]].stakingPower; // Larger poolStakingPower has better chance of reaching winningNum
+                if (total > winningNum) {
+
+                    // Retry if the winning pool also won last validation selection
+                    if (poolAddresses[i] == lastWinnerAddress) {
+                        attempts++;
+                        break; // Retry winner selection
+                    }
+
+                    emit WinnerSelected(registeredPools[poolAddresses[i]].name, registeredPools[poolAddresses[i]].stakingPower, globalStakingPower);
+                    lastWinnerAddress = poolAddresses[i];
+                    baseReward = BaseReward.updateBaseReward(); // New base reward simulates reward for validating the upcoming block
+                    updateRewardRate(baseReward, globalPools, globalStakes); // Calculate new reward rate based on new baseReward
+                    return registeredPools[poolAddresses[i]].name;
+                }
             }
         }
 
-        revert("Master Registry: Error selecting winner.");
+        revert("Master Registry: Unable to select a valid winner. Try again.");
     }
 
 

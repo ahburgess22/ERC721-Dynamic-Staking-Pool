@@ -1,0 +1,65 @@
+{
+  "name": "NFT",
+  "address": "0x269d21eE4c0D09E43e2B526e11a22EA4826eef02",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "createNFT",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "message",
+          "type": "string"
+        }
+      ],
+      "name": "LegendaryPull",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getToken",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "rarity",
+              "type": "string"
+            },
+            {
+              "internalType": "uint8",
+              "name": "level",
+              "type": "uint8"
+            }
+          ],
+          "internalType": "struct TokenDefinitions.NFT",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "filePath": " - connect to localhost - /Contracts/NFTCreator.sol",
+  "pinnedAt": 1735937602097
+}
