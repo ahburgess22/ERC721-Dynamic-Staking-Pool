@@ -21,34 +21,12 @@ contract RewardToken is ERC20, ERC20Capped, Ownable {
     constructor(uint256 maxSupply) ERC20("Reward Token", "RTK") ERC20Capped(maxSupply) Ownable(msg.sender) { }
 
     /**
-     * @dev Sets the staking contract address.
-     * @param stakingContract The address of the staking contract.
-     * Requirements:
-     * - Only the contract owner can call this function.
-     */
-    function setStakingContract(address stakingContract) public onlyOwner {
-        _stakingContract = stakingContract;
-    }
-
-    /**
-     * @dev Retrieves the staking contract address.
-     * @return The address of the staking contract.
-     */
-    function getStakingContract() public view returns (address) {
-        return _stakingContract;
-    }
-
-    /**
      * @dev Internal function to handle token updates during transfers.
      * @param from The address transferring tokens.
      * @param to The address receiving tokens.
      * @param amount The amount of tokens being transferred.
      */
-    function _update(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override(ERC20, ERC20Capped) {
+    function _update(address from, address to, uint256 amount) internal virtual override(ERC20, ERC20Capped) {
         super._update(from, to, amount); // Calls parent implementation
     }
 
@@ -58,11 +36,7 @@ contract RewardToken is ERC20, ERC20Capped, Ownable {
      * @param to The address receiving tokens.
      * @param amount The amount of tokens being transferred.
      */
-    function testUpdate(
-        address from,
-        address to,
-        uint256 amount
-    ) public {
+    function testUpdate(address from, address to, uint256 amount) public {
         _update(from, to, amount);
     }
 
@@ -74,24 +48,22 @@ contract RewardToken is ERC20, ERC20Capped, Ownable {
      * - Only the staking contract can call this function.
      * - Total supply must not exceed the cap.
      */
-    function mint(address to, uint256 amount) public onlyStakingContract {
-        require(
-            totalSupply() + amount <= cap(),
-            "RTK: ERC20 cap exceeded."
-        );
+    function mint(address to, uint256 amount) public onlyAuthorized {
+        require(totalSupply() + amount <= cap(), "RTK: ERC20 cap exceeded.");
         _mint(to, amount);
     }
 
-    /**
-     * @dev Modifier to restrict access to the staking contract.
-     * Requirements:
-     * - The caller must be the staking contract.
-     */
-    modifier onlyStakingContract() {
+    function setAuthorizedStaker(address stakingContract) public onlyOwner {
+        _stakingContract = stakingContract;
+    }
+
+    modifier onlyAuthorized() {
         require(
-            msg.sender == _stakingContract,
-            "RTK: Caller is not the staking contract."
+            msg.sender == owner() || msg.sender == _stakingContract,
+            "RTK: Unauthorized"
         );
         _;
     }
+
+    
 }

@@ -1,0 +1,46 @@
+{
+	"compiler": {
+		"version": "0.8.26+commit.8a97fa7a"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [],
+		"devdoc": {
+			"details": "A library for defining key data structures used in the staking and NFT ecosystem.",
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"Helpers/CompDefinitions.sol": "StakeDefinitions"
+		},
+		"evmVersion": "cancun",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"Helpers/CompDefinitions.sol": {
+			"keccak256": "0xc9c1045f00b0d3b049430c65a9fc3da86d74aa52e13b36d4012b64523578f7a4",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://bada6e2dfec0def0adc935dbda7b3fb36c3f55ed309147ccac65d08f8864bbad",
+				"dweb:/ipfs/QmYQFBaHAQJXzGMENqXs7RTo8i2GNi7ZcamzkkD2CUefDR"
+			]
+		}
+	},
+	"version": 1
+}

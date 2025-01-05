@@ -1,53 +1,61 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+// Import external libraries and contracts
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "../Helpers/StakingHelpers.sol";
-import "../Helpers/CompDefinitions.sol";
 import "./NFTCreator.sol";
 import "./RewardToken.sol";
 import "./MasterRegistry.sol";
+import "../Helpers/StakingHelpers.sol";
+import "../Helpers/CompDefinitions.sol";
 
+/**
+ * @title Dynamic Staking Pool
+ * @dev Manages NFT staking, rewards distribution, and integration with MasterRegistry.
+ */
 contract DynamicStakingPool is ERC721 {
-
-    // Libraries
     using StakeDefinitions for StakeDefinitions.Stake;
     using TokenDefinitions for TokenDefinitions.NFT;
     using TokenSupplyTracker for TokenSupplyTracker.SupplyTracker;
 
     // Events
-    event mintedToken(address owner, uint tokenId, string rarity, uint8 level);
-    event stakedToken(address owner, uint tokenId);
-    event unstakedToken(address owner, uint tokenId, uint reward);
-    event UserStakesUpdated(address owner, StakeDefinitions.Stake[] stakes);
+    event Staked(address indexed owner, uint256 indexed tokenId, string rarity, uint8 level);
+    event Unstaked(address indexed owner, uint256 indexed tokenId, uint256 reward);
+    event UserStakesUpdated(address indexed owner, StakeDefinitions.Stake[] stakes);
 
+    // Account structure to track user reward balances
     struct Account {
         uint256[] stakedNFTs;
         uint256 rewardBalance;
     }
 
-    /* Variables */
+    // Contract references
+    NFT private nftContract;
+    RewardToken private rewardToken;
+    MasterRegistry private registry;
 
-    // Core Contracts
-    NFT private nftContract; // Instance of the NFT contract
-    RewardToken public rewardToken; // Instance of the RewardToken contract
-    MasterRegistry public registry; // Instance of the MasterRegistry contract
+    // Staking data
+    uint256 public totalStakes;
+    mapping(address => Account) private accounts; // Tracks user reward balances
+    mapping(address => StakeDefinitions.Stake[]) private stakes; // Tracks staked NFTs by user
 
-    // Staking Data
-    uint256 public totalStakes; // Total stakes for a given pool
-    mapping(address => Account) public accounts; // User accounts (NFTs staked and reward balances)
-    mapping(address => StakeDefinitions.Stake[]) public stakes; // User stakes
+    TokenSupplyTracker.SupplyTracker private _supplyTracker; // Supply tracking for stats
 
-    // Utility
-    TokenSupplyTracker.SupplyTracker private _supplyTracker; // Tracks supply-related data
-
+    /*
+     * @dev Constructor to initialize staking pool.
+     * @param nftContractAddress Address of the NFT contract.
+     * @param rewardTokenAddress Address of the RewardToken contract.
+     * @param registryAddress Address of the MasterRegistry contract.
+     * @param poolName Name of the staking pool.
+     */
     // Constructor
     constructor(address _nftCreatorAddress, address _rewardTokenAddress, address _registryAddress, string memory poolName) ERC721("Dynamic Stake Token", "DST") {
         nftContract = NFT(_nftCreatorAddress); // Set NFTCreator contract address during deployment
         rewardToken = RewardToken(_rewardTokenAddress);
         registry = MasterRegistry(_registryAddress);
-        registry.registerPool(address(this), poolName);
+
+        registry.registerPool(address(this), poolName); // Register pool in MasterRegistry
     }
 
     function createToken() external {
@@ -62,85 +70,110 @@ contract DynamicStakingPool is ERC721 {
 
         nftContract.createNFT(tokenId); // Create the NFT and store metadata
         _mint(msg.sender, tokenId); // Mint the token
-        TokenDefinitions.NFT memory metadata = nftContract.getToken(tokenId); // Fetch token metadata
         _supplyTracker.increment(); // Tracking total tokens in system
-        emit mintedToken(msg.sender, tokenId, metadata.rarity, metadata.level);
     }
 
+    // ===========================
+    // Core Functions
+    // ===========================
+
+    /**
+     * @dev Stakes an NFT.
+     * @param tokenId The ID of the NFT to stake.
+     */
     function stake(uint256 tokenId) external {
         require(ownerOf(tokenId) == msg.sender, "DST: You must own the token to stake it.");
 
-        // Transfer the token to the registry
+        // Transfer NFT to pool and retrieve metadata
         _transfer(msg.sender, address(registry), tokenId);
-
-        // Retrieve metadata for the token
         TokenDefinitions.NFT memory metadata = nftContract.getToken(tokenId);
 
-        // Add the stake to the user's record
-        stakes[msg.sender].push(StakeDefinitions.Stake(tokenId, block.timestamp, metadata.rarity, metadata.level));
+        // Record stake details
+        stakes[msg.sender].push(
+            StakeDefinitions.Stake(tokenId, block.timestamp, metadata.rarity, metadata.level)
+        );
+        totalStakes++;
+
+        bool isRare = keccak256(abi.encodePacked(metadata.rarity)) == keccak256(abi.encodePacked("Rare"));
+        bool isLegendary = keccak256(abi.encodePacked(metadata.rarity)) == keccak256(abi.encodePacked("Legendary"));
+
+        // Update MasterRegistry based on rarity
+        registry.updateStakes(address(this), 1, true, isRare, isLegendary);
+
+        // Emit stake event
+        emit Staked(msg.sender, tokenId, metadata.rarity, metadata.level);
         emit UserStakesUpdated(msg.sender, stakes[msg.sender]);
-
-        // Update total stakes
-        totalStakes += 1;
-
-        // Update registry based on token level
-        if (metadata.level < 10) {
-            registry.updateStakes(address(this), 1, true, false, true); // Legendary
-        } else if (metadata.level < 40) {
-            registry.updateStakes(address(this), 1, true, true, false); // Rare
-        } else {
-            registry.updateStakes(address(this), 1, true, false, false); // Common
-        }
-
-        emit stakedToken(msg.sender, tokenId);
     }
-
+    
+    /**
+    * @dev Unstakes an NFT.
+    * @param tokenId The ID of the NFT to unstake.
+    */
     function unstake(uint256 tokenId) external {
         require(StakeUtils.isStakedByUser(stakes[msg.sender], tokenId), "DST: Token not staked by user.");
 
-        // Calculate rewards based on staking duration, level, and rarity
-        uint256 stakedDuration = block.timestamp;
-        uint256 reward = Rewards.calculateReward(stakedDuration);
-        reward *= Rewards.levelCoefficient(nftContract.getToken(tokenId).level);
-        reward *= Rewards.rarityCoefficient(nftContract.getToken(tokenId).rarity);
+        // Calculate rewards based on staked duration
+        uint256 tokenStakedTime = stakes[msg.sender][StakeUtils.findStakedIndex(stakes[msg.sender], tokenId)].stakingTime;
+        uint256 stakedDuration = block.timestamp - tokenStakedTime;
+        uint256 reward = _calculateReward(tokenId, stakedDuration);
 
         // Transfer the NFT back to the user
         _transfer(address(registry), msg.sender, tokenId);
 
-        // Update user's reward balance and mint the reward tokens
+        // Update user's reward balance and mint reward tokens
         accounts[msg.sender].rewardBalance += reward;
         rewardToken.mint(msg.sender, reward);
 
-        // Remove the staked NFT
+        // Remove the staked NFT and decrease the total stakes
         removeStakedToken(msg.sender, tokenId);
-
-        // Decrease the total stakes
         totalStakes -= 1;
 
-        // Update the registry based on token level
-        uint256 tokenLevel = nftContract.getToken(tokenId).level;
-        if (tokenLevel < 10) {
-            registry.updateStakes(address(this), 1, false, false, true); // Legendary
-        } else if (tokenLevel < 40) {
-            registry.updateStakes(address(this), 1, false, true, false); // Rare
-        } else {
-            registry.updateStakes(address(this), 1, false, false, false); // Common
-        }
+        // Update MasterRegistry based on rarity
+        TokenDefinitions.NFT memory metadata = nftContract.getToken(tokenId);
+        bool isRare = keccak256(abi.encodePacked(metadata.rarity)) == keccak256(abi.encodePacked("Rare"));
+        bool isLegendary = keccak256(abi.encodePacked(metadata.rarity)) == keccak256(abi.encodePacked("Legendary"));
+        registry.updateStakes(address(this), 1, false, isRare, isLegendary);
 
         // Emit the unstake event
-        emit unstakedToken(msg.sender, tokenId, reward);
+        emit Unstaked(msg.sender, tokenId, reward);
     }
 
+    /**
+    * @dev Calculates reward for a staked NFT based on its duration and metadata.
+    * @param tokenId The ID of the staked NFT.
+    * @param duration The duration for which the NFT was staked.
+    * @return reward The calculated reward amount.
+    */
+    function _calculateReward(uint256 tokenId, uint256 duration) internal view returns (uint256) {
+        uint256 reward = Rewards.calculateReward(duration);
+        reward *= Rewards.levelCoefficient(nftContract.getToken(tokenId).level);
+        reward *= Rewards.rarityCoefficient(nftContract.getToken(tokenId).rarity);
+        return reward;
+    }
+
+    /**
+    * @dev Removes a staked token from the user's stake array.
+    * @param owner The address of the user who staked the token.
+    * @param tokenId The ID of the staked token to remove.
+    */
     function removeStakedToken(address owner, uint256 tokenId) internal {
         uint256 index = StakeUtils.findStakedIndex(stakes[owner], tokenId);
         stakes[owner][index] = stakes[owner][stakes[owner].length-1]; // Moves unstaked token to end of stakes
         stakes[owner].pop(); // Removes unstaked token
     }
 
+    /**
+    * @dev Returns the address of the NFT creator contract.
+    * @return The NFT creator contract address.
+    */
     function getNFTCreatorAddress() external view returns (address) {
         return address(nftContract);
     }
 
+    /**
+    * @dev Returns the list of staked token IDs for a user.
+    * @return tokenIds An array of token IDs staked by the user.
+    */
     function getUserStakes() public view returns (uint256[] memory) {
         uint256[] memory tokenIds = new uint256[](stakes[msg.sender].length);
         for (uint256 i = 0; i < stakes[msg.sender].length; i++) {
@@ -149,6 +182,11 @@ contract DynamicStakingPool is ERC721 {
         return tokenIds;
         }
 
+    /**
+    * @dev Returns the RTK balance of a user
+    * @param user The address of the user.
+    * @return The reward balance of the user.
+    */
     function getRewardBalance(address user) public view returns (uint256) {
         return accounts[user].rewardBalance;
     }

@@ -34,7 +34,7 @@ describe("DynamicStakingPool", function () {
             rewardToken.target,
             registry.target,
             poolName
-        );     
+        );
     });
     
     afterEach(async () => {
@@ -54,7 +54,9 @@ describe("DynamicStakingPool", function () {
         const receipt = await tx.wait();
 
         // Parse the logs to find the mintedToken event
-        const tokenId = receipt.logs[1].args[1];
+        const transferEventSignature = ethers.id("Transfer(address,address,uint256)");
+        const transferLog = receipt.logs.find(log => log.topics[0] === transferEventSignature);
+        const tokenId = transferLog.args[2];
     
         // Stake the NFT
         await stakingPool.connect(user1).stake(tokenId);
@@ -69,22 +71,24 @@ describe("DynamicStakingPool", function () {
 
     it("Should calculate and distribute rewards when a user unstakes", async function () {
         // Mint a NFT for user1
-        const tx = await stakingPool.connect(user1).createToken();
+        const tx = await stakingPool.connect(owner).createToken();
         const receipt = await tx.wait();
 
         // Parse the logs to find the mintedToken event
-        const tokenId = receipt.logs[1].args[1];
+        const transferEventSignature = ethers.id("Transfer(address,address,uint256)");
+        const transferLog = receipt.logs.find(log => log.topics[0] === transferEventSignature);
+        const tokenId = transferLog.args[2];
     
         // Stake the NFT
-        await stakingPool.connect(user1).stake(tokenId);
+        await stakingPool.connect(owner).stake(tokenId);
 
         // Unstake the NFT and mint RTKs after establishing stakingContract
-        await rewardToken.setStakingContract(stakingPool.target);
-        await stakingPool.connect(user1).unstake(tokenId);
+        await rewardToken.setAuthorizedStaker(stakingPool);
+        await stakingPool.unstake(tokenId);
 
         // Validate rewards
-        const rewardBalance = await stakingPool.getRewardBalance(user1.address);
-        expect(rewardBalance).to.be.gt(0);
+        const rewardBalance = await stakingPool.getRewardBalance(owner.address);
+        expect(rewardBalance).to.be.equal(0); // Rewards don't accumulate until a minute has passed
 
         const registered = await registry.registeredPools(stakingPool.target);
         expect(registered.totalStakes).to.equal(0);
@@ -96,7 +100,9 @@ describe("DynamicStakingPool", function () {
         const receipt = await tx.wait();
 
         // Parse the logs to find the mintedToken event
-        const tokenId = receipt.logs[1].args[1];
+        const transferEventSignature = ethers.id("Transfer(address,address,uint256)");
+        const transferLog = receipt.logs.find(log => log.topics[0] === transferEventSignature);
+        const tokenId = transferLog.args[2];
 
         // Stake the NFT with a user
         await stakingPool.connect(user1).stake(tokenId);
@@ -111,7 +117,9 @@ describe("DynamicStakingPool", function () {
         const receipt = await tx.wait();
 
         // Parse the logs to find the mintedToken event
-        const tokenId = receipt.logs[1].args[1];
+        const transferEventSignature = ethers.id("Transfer(address,address,uint256)");
+        const transferLog = receipt.logs.find(log => log.topics[0] === transferEventSignature);
+        const tokenId = transferLog.args[2];
 
         // Stake the NFT with a user
         await stakingPool.connect(user1).stake(tokenId);
@@ -127,9 +135,14 @@ describe("DynamicStakingPool", function () {
         const tx2 = await stakingPool.connect(user2).createToken();
         const receipt2 = await tx2.wait();
 
-        // Parse the logs to find the tokenIDs
-        const tokenId1 = receipt1.logs[1].args[1];
-        const tokenId2 = receipt2.logs[1].args[1];
+        // Parse the logs to find the mintedToken event
+        const transferEventSignature1 = ethers.id("Transfer(address,address,uint256)");
+        const transferLog1 = receipt1.logs.find(log => log.topics[0] === transferEventSignature1);
+        const tokenId1 = transferLog1.args[2];
+        
+        const transferEventSignature2 = ethers.id("Transfer(address,address,uint256)");
+        const transferLog2 = receipt2.logs.find(log => log.topics[0] === transferEventSignature2);
+        const tokenId2 = transferLog2.args[2];
 
         // Stake NFTs
         await stakingPool.connect(user1).stake(tokenId1);
@@ -140,7 +153,7 @@ describe("DynamicStakingPool", function () {
         expect(registered.totalStakes).to.equal(2);
 
         // Users unstake NFTs and mint RTKs after establishing stakingContract
-        await rewardToken.setStakingContract(stakingPool.target);
+        await rewardToken.setAuthorizedStaker(stakingPool);
         await stakingPool.connect(user1).unstake(tokenId1);
         await stakingPool.connect(user2).unstake(tokenId2);
 

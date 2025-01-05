@@ -41,11 +41,11 @@
 			]
 		},
 		"Helpers/StakingHelpers.sol": {
-			"keccak256": "0xe76cf3ad696d81a71c64e2be88ea892a22163e23a8f63e54b15cbfd8e595ae3a",
+			"keccak256": "0xb4efae60b690031176a4b0878e7bdc9d8acf9ef90a392de14b438a2d8c34d884",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://f006432b3491e955c65e418ba6068b99f7d8ce450d587c1cc92a4a965dbfaa4d",
-				"dweb:/ipfs/QmXZtTB6TEYDnDwQMF2KXA6hjxwtgjHsHptpdPdkFbyttr"
+				"bzz-raw://6c5de11cd1b007042f81489f572ca045bccd09ba19e2daededae259b14a69045",
+				"dweb:/ipfs/QmZWpTZYxGW83uq732rikG14y4hfa21wa3KLszui9mo5jJ"
 			]
 		}
 	},

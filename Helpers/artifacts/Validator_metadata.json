@@ -13,6 +13,7 @@
 		"userdoc": {
 			"kind": "user",
 			"methods": {},
+			"notice": "Validates operations using the global staking power",
 			"version": 1
 		}
 	},
@@ -33,11 +34,11 @@
 	},
 	"sources": {
 		"Helpers/RegistryHelpers.sol": {
-			"keccak256": "0x5214695f7510680f3b9d5d413628ce955554f941b0a5220e14936fc5caf7e07a",
+			"keccak256": "0x984d9eb563f787d533037f6efd31788c3ba26bcaba24d6670efae76a6ee5d9c0",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://688f932c0637276c8a2d0b90ab181defca626827cb88260476e8e8cf09c2099e",
-				"dweb:/ipfs/QmSkAt1gWLs79ThKCJdayB1Yb3vsaWhoiYkGTRzn8SmdAt"
+				"bzz-raw://6ffa2e9329848d23998d38eec3149510dc926f613508995f20061ac65eb1a348",
+				"dweb:/ipfs/QmbVsypQfSGVDLDHVisup51EAWfKBcSajRM7rjLwfGF75S"
 			]
 		}
 	},
